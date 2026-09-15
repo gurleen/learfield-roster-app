@@ -1,42 +1,41 @@
-# sv
+# Learfield Roster App
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A desktop app for pulling team rosters and building lineups, exportable to CSV.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-bun x sv@0.17.0 create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:auto" drizzle="database:sqlite+sqlite:libsql" ai-tools="ide:claude-code,cursor,opencode+delivery:plugin+tools:mcp,svelte-code-writer,svelte-core-bestpractices,svelte-file-editor+mcpSetup:local" --install bun svelte-app-starter
-```
+Built with SvelteKit and Tauri, with a Rust backend that scrapes roster data.
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Install dependencies:
 
 ```sh
-npm run dev
+bun install
+```
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+Run the web frontend alone:
+
+```sh
+bun run dev
+```
+
+Run the full desktop app (frontend + Rust backend):
+
+```sh
+bun run tauri dev
 ```
 
 ## Building
 
-To create a production version of your app:
+Production web build:
 
 ```sh
-npm run build
+bun run build
 ```
 
-You can preview the production build with `npm run preview`.
+Desktop app bundle for your current platform:
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```sh
+bun run tauri build
+```
+
+Signed macOS and Windows builds run from GitHub Actions: trigger the "Build Desktop Application" workflow manually from the Actions tab.

@@ -1,0 +1,18 @@
+/* Blueprint 6 Navbar colors, from packages/core/src/components/navbar.
+ * Keep local: the app's semantic tokens change background/border in dark mode.
+ */
+@layer components {
+	.blueprint-navbar {
+		background-color: var(--background);
+		box-shadow: 0 0 0 1px var(--border), 0 1px 1px rgba(17, 20, 24, 0.1);
+	}
+	.dark .blueprint-navbar {
+		box-shadow: 0 0 0 1px var(--border), 0 1px 1px rgba(0, 0, 0, 0.4);
+	}
+	.blueprint-navbar-heading {
+		color: var(--foreground);
+	}
+	.blueprint-navbar-divider {
+		border-color: var(--border);
+	}
+}

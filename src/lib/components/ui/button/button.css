@@ -1,0 +1,179 @@
+/* Blueprint 6 button colors and state formulas, from packages/core/src/components/button.
+ * Keep these local: the app's semantic tokens change intent colors in dark mode.
+ * default maps to primary; secondary maps to Blueprint's button without an intent.
+ */
+@layer components {
+	.blueprint-button {
+		border: none;
+		--button-rest: color-mix(in srgb, #5f6b7c 5%, white);
+		--button-hover: color-mix(in srgb, #404854 9%, white);
+		--button-active: color-mix(in srgb, #383e47 16%, white);
+		--button-text: #1c2127;
+		--button-disabled: color-mix(in srgb, #8f99a8 20%, transparent);
+		--button-disabled-text: #8f99a8;
+		--button-border: color-mix(in oklch, #5f6b7c40 90%, #111418);
+		--button-shadow-alpha: 10%;
+		background-color: var(--button-rest);
+		color: var(--button-text);
+		box-shadow:
+			inset 0 0 0 1px var(--button-border),
+			0 1px 2px color-mix(in oklch, #111418 var(--button-shadow-alpha), transparent);
+		cursor: pointer;
+		text-decoration: none;
+	}
+	.blueprint-button:hover {
+		--button-shadow-alpha: 20%;
+		background-color: var(--button-hover);
+		background-clip: padding-box;
+	}
+	.blueprint-button:is(
+		:active,
+		[aria-pressed='true'],
+		[aria-expanded='true'],
+		[data-state='open']
+	) {
+		--button-shadow-alpha: 20%;
+		background-color: var(--button-active);
+	}
+	.blueprint-button:focus-visible {
+		outline: 2px solid #2d72d2;
+		outline-offset: 2px;
+	}
+	.blueprint-button-primary {
+		--button-rest: #2d72d2;
+		--button-hover: #215db0;
+		--button-active: #184a90;
+	}
+	.blueprint-button-danger {
+		--button-rest: #cd4246;
+		--button-hover: #ac2f33;
+		--button-active: #8e292c;
+	}
+	.blueprint-button-success {
+		--button-rest: #238551;
+		--button-hover: #1c6e42;
+		--button-active: #165a36;
+	}
+	.blueprint-button-warning {
+		--button-rest: oklch(from #c87619 calc(l + 0.177) calc(c - 0.01) calc(h + 6.26));
+		--button-hover: color-mix(in oklch, var(--button-rest) 77%, #935610);
+		--button-active: color-mix(in oklch, var(--button-rest) 46%, #77450d);
+	}
+	.blueprint-button:is(
+		.blueprint-button-primary,
+		.blueprint-button-danger,
+		.blueprint-button-success,
+		.blueprint-button-warning
+	) {
+		--button-text: white;
+		--button-disabled: color-mix(in oklch, var(--button-rest) 50%, transparent);
+		--button-disabled-text: rgb(255 255 255 / 60%);
+	}
+	.blueprint-button.blueprint-button-warning {
+		--button-text: #111418;
+		--button-disabled: color-mix(in oklch, #c87619 40%, transparent);
+		--button-disabled-text: rgb(17 20 24 / 60%);
+	}
+	.dark .blueprint-button {
+		--button-border: rgb(255 255 255 / 10%);
+		--button-shadow-alpha: 20%;
+	}
+	.dark
+		.blueprint-button:is(
+			:hover,
+			:active,
+			[aria-pressed='true'],
+			[aria-expanded='true'],
+			[data-state='open']
+		) {
+		--button-shadow-alpha: 40%;
+	}
+	.dark
+		.blueprint-button:is(
+			.blueprint-button-primary,
+			.blueprint-button-danger,
+			.blueprint-button-success,
+			.blueprint-button-warning
+		):hover {
+		--button-shadow-alpha: 20%;
+	}
+	.dark .blueprint-button-neutral {
+		--button-rest: color-mix(in srgb, #5f6b7c 40%, #111418);
+		--button-hover: color-mix(in srgb, #404854 42%, #111418);
+		--button-active: color-mix(in srgb, #383e47 30%, #111418);
+		--button-text: white;
+		--button-disabled: color-mix(in srgb, #8f99a8 4%, transparent);
+	}
+	.dark
+		.blueprint-button:is(
+			.blueprint-button-primary,
+			.blueprint-button-danger,
+			.blueprint-button-success
+		) {
+		--button-disabled-text: rgb(255 255 255 / 30%);
+	}
+	.dark .blueprint-button-warning {
+		--button-disabled-text: rgb(17 20 24 / 50%);
+	}
+	.blueprint-button:is(
+		.blueprint-button-minimal,
+		.blueprint-button-outline,
+		.blueprint-button-link
+	) {
+		--button-rest: transparent;
+		--button-hover: color-mix(in srgb, #404854 8%, transparent);
+		--button-active: color-mix(in srgb, #383e47 16%, transparent);
+		--button-disabled: transparent;
+		box-shadow: none;
+	}
+	.dark
+		.blueprint-button:is(
+			.blueprint-button-minimal,
+			.blueprint-button-outline,
+			.blueprint-button-link
+		) {
+		--button-text: white;
+		--button-hover: color-mix(in srgb, #5f6b7c 24%, transparent);
+		--button-active: color-mix(in srgb, #5f6b7c 49%, transparent);
+	}
+	.blueprint-button.blueprint-button-outline {
+		border: 1px solid #5f6b7c40;
+	}
+	.dark .blueprint-button.blueprint-button-outline {
+		border-color: rgb(255 255 255 / 30%);
+	}
+	.blueprint-button.blueprint-button-link {
+		--button-text: #215db0;
+		--button-hover: transparent;
+		--button-active: transparent;
+	}
+	.dark .blueprint-button.blueprint-button-link {
+		--button-text: #8abbff;
+	}
+	.blueprint-button-link:hover {
+		text-decoration: underline;
+	}
+	.blueprint-button:is(:disabled, [aria-disabled='true']) {
+		background-color: var(--button-disabled);
+		color: var(--button-disabled-text);
+		box-shadow: none;
+		cursor: not-allowed;
+		outline: none;
+		text-decoration: none;
+	}
+	.blueprint-button-outline:is(:disabled, [aria-disabled='true']) {
+		border-color: #5f6b7c1f;
+	}
+	.dark .blueprint-button-outline:is(:disabled, [aria-disabled='true']) {
+		border-color: rgb(255 255 255 / 20%);
+	}
+	@media (forced-colors: active) {
+		.blueprint-button {
+			border: 1px solid ButtonBorder;
+		}
+		.blueprint-button:is(:disabled, [aria-disabled='true']) {
+			color: GrayText;
+			border-color: GrayText;
+		}
+	}
+}

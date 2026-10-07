@@ -1,38 +1,45 @@
-# Roster scraper API (Tauri commands)
+# Roster scraper API
 
-Backend implementation: `src-tauri/src/scraper/`. Frontend types: `src/lib/types/roster.ts`.
+Server implementation: `src/lib/server/scraper/`, exposed by the routes in `src/routes/api/`. Shared types: `src/lib/types/roster.ts`.
 
-Call these with SvelteKit's `invoke()` from `@tauri-apps/api/core`:
-
-```ts
-import { invoke } from "@tauri-apps/api/core";
-import type { RosterResult, SportInfo } from "$lib/types/roster";
-```
-
-No capability entries are needed — these are app-defined commands (not a Tauri plugin), so they're callable under the existing `core:default` permission in `src-tauri/capabilities/default.json`.
-
-## `fetch_roster`
+The UI calls the endpoints through `src/lib/api.ts`, which throws an `Error` carrying the server's message:
 
 ```ts
-const roster = await invoke<RosterResult>("fetch_roster", { url });
+import { fetchRoster, listSports } from '$lib/api';
 ```
 
-- `url: string` — a Sidearm roster page URL, e.g. `https://gozips.com/sports/womens-soccer/roster`. Must match `/sports/{sport-slug}/roster` (trailing slash optional); anything else rejects before any network call.
-- Resolves to `RosterResult` (see below).
-- Rejects with a plain `string` error message on failure (Tauri commands return `Result<T, String>`) — display it as-is, there's no structured error code on the frontend side.
-
-Detects NextGen (JSON API) vs Classic (HTML) automatically — the caller doesn't need to know which platform a school uses.
-
-## `list_sports`
+## `GET /api/roster?url=…`
 
 ```ts
-const sports = await invoke<SportInfo[]>("list_sports", { website });
+const roster = await fetchRoster('https://gozips.com/sports/womens-soccer/roster');
 ```
 
-- `website: string` — just the athletics site host or URL, e.g. `gozips.com` or `https://gozips.com/anything` (scheme/path ignored, normalized to an origin).
-- Resolves to `SportInfo[]`, sorted alphabetically by `title`. Always non-empty on success — falls back to `{ slug: "womens-soccer", title: "Women's Soccer" }` if nothing else is discoverable.
-- Use `slug` to build a roster URL for `fetch_roster`: `` `https://${website}/sports/${slug}/roster` ``.
-- Rejects with a plain `string` error message only if the site couldn't be reached at all.
+- `url`: a Sidearm roster page URL. Must match `/sports/{sport-slug}/roster` (trailing slash optional); anything else is rejected before any browser work.
+- Responds with a `RosterResult` (see below).
+
+Detects NextGen (JSON API) vs Classic (server-rendered HTML) automatically; callers don't need to know which platform a school uses.
+
+## `GET /api/sports?website=…`
+
+```ts
+const sports = await listSports('gozips.com');
+```
+
+- `website`: the athletics site host or any URL on it, e.g. `gozips.com` or `https://gozips.com/anything`. Normalized to its https origin.
+- Responds with `SportInfo[]`, sorted alphabetically by `title`. Always non-empty on success: falls back to `{ slug: "womens-soccer", title: "Women's Soccer" }` if nothing else is discoverable.
+- Build a roster URL from a `slug` with `` `https://${website}/sports/${slug}/roster` ``.
+
+## Errors
+
+Failures respond with `{ "error": string }`, a message meant to be shown to the user as-is.
+
+| Status | When                                                                                      |
+| ------ | ----------------------------------------------------------------------------------------- |
+| 400    | Missing or malformed `url` / `website` parameter                                          |
+| 404    | The sport or its roster doesn't exist on a NextGen site                                   |
+| 422    | Not a `/sports/{slug}/roster` URL, or the page is neither NextGen nor Classic             |
+| 502    | The site was unreachable, returned an error, blocked the browser, or sent unexpected data |
+| 503    | Browser Run couldn't start a browser session (for example, plan limits)                   |
 
 ## Types (`src/lib/types/roster.ts`)
 
@@ -50,7 +57,7 @@ type Player = {
 	previousSchool: string | null;
 	major: string | null;
 	bioUrl: string | null;
-	headshotUrl: string | null; // resolved original image URL — safe to <img src> directly
+	headshotUrl: string | null; // resolved original image URL, safe to <img src> directly
 };
 
 type Coach = {
@@ -60,7 +67,7 @@ type Coach = {
 	headshotUrl: string | null;
 };
 
-type Platform = "nextgen" | "classic";
+type Platform = 'nextgen' | 'classic';
 
 type RosterResult = {
 	sourceUrl: string; // normalized roster URL actually fetched
@@ -79,11 +86,25 @@ type SportInfo = {
 };
 ```
 
-Notes for building the UI:
-- Every `Player`/`Coach` field except `firstName`/`lastName`/`fullName`/`name` is nullable — render blanks/placeholders for `null`, don't assume presence.
-- `players` and `coaches` can both be empty arrays even on a successful `fetch_roster` call (e.g. a roster page with no posted coaches).
-- No image download/local caching exists yet — `headshotUrl` is a remote URL only.
+Notes for building UI:
+
+- Every `Player`/`Coach` field except `firstName`/`lastName`/`fullName`/`name` is nullable. Render blanks or placeholders for `null`.
+- `players` and `coaches` can both be empty arrays on a successful response (for example, a roster page with no posted coaches).
+- `headshotUrl` is a remote URL only; nothing is downloaded or cached.
+
+## How scraping works
+
+Sidearm sites sit behind bot protection (Imperva on the sites tested) that rejects plain requests from Workers, so the scraper never fetches a school site directly. Each API request runs in one tab of a [Browser Run](https://developers.cloudflare.com/browser-run/) session (`browser.ts`):
+
+- **Sessions** are reused when a warm one has room, then released with `disconnect()` so the next request can pick them up (they idle out after 60 seconds). Each request gets its own browser context, so cookies don't leak between requests.
+- **NextGen:** the tab loads the roster page, then calls `/api/v2/Sports`, `/api/v2/Rosters?sportId=…` and, when needed, `/api/v2/Rosters/{id}` with `fetch()` from inside the page, so the requests carry the cookies the site's bot protection issued. The page trims each response to the fields the mappers read (`NEXTGEN_KEYS`).
+- **Classic:** `extractRows` (`extract.ts`) runs in the page and returns just the text and attributes named in `CLASSIC_ROSTER_SPEC`, keeping DevTools messages small. Turning those rows into players and coaches happens in the Worker.
+- **Sports list:** the NextGen API when the site has one; otherwise roster links scraped from the homepage, then from a default roster page.
+
+Functions passed to `page.evaluate()` run inside the page, so they must not reference anything outside their own body. The comment on `extractRows` explains the constraints.
+
+The scraping logic is tested against `FakeSitePage` (`fake-page.ts`), which serves canned documents and runs `extractRows` through linkedom. There are no tests against live sites.
 
 ## Out of scope (not implemented)
 
-Image download, background removal, and any zip/export flow that exist in the reference `learfield-scraper` repo are **not** ported. Don't wire UI affordances for those.
+Image download, background removal, and the zip/export flow from the original `learfield-scraper` reference implementation aren't ported. Don't wire UI affordances for them.

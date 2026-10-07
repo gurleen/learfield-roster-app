@@ -1,2 +1,2 @@
-// Tauri has no Node server to render on; the app ships as a static SPA shell.
+// Client-rendered SPA: the Worker serves this shell plus the /api scraping routes.
 export const ssr = false;

@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { open, save } from "@tauri-apps/plugin-dialog";
-	import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-	import { CircleAlert, FolderOpen, GripVertical, ListOrdered, Plus, Save, X } from "@lucide/svelte";
+	import { CircleAlert, Download, FolderOpen, GripVertical, ListOrdered, Plus, X } from "@lucide/svelte";
 	import * as Card from "$lib/components/ui/card/index.js";
 	import * as Table from "$lib/components/ui/table/index.js";
 	import { Button } from "$lib/components/ui/button/index.js";
@@ -9,8 +7,8 @@
 	import { NumericInput } from "$lib/components/ui/numeric-input/index.js";
 	import { Spinner } from "$lib/components/ui/spinner/index.js";
 	import { NonIdealState } from "$lib/components/ui/non-ideal-state/index.js";
-	import { ROSTER_CSV_HEADER, parseCsv, toCsv } from "$lib/csv";
-	import { cn } from "$lib/utils.js";
+	import { ROSTER_CSV_HEADER, downloadCsv, parseCsv, toCsv } from "$lib/csv";
+	import { cn, errorMessage } from "$lib/utils.js";
 
 	type CsvPlayer = {
 		id: string;
@@ -30,10 +28,9 @@
 	let starters = $state<number | undefined>(11);
 	let loadedFileName = $state<string | null>(null);
 
+	let fileInput = $state<HTMLInputElement>();
 	let loading = $state(false);
 	let loadError = $state<string | null>(null);
-	let savingCsv = $state(false);
-	let saveError = $state<string | null>(null);
 
 	const available = $derived(roster.filter((player) => !lineup.some((l) => l.id === player.id)));
 	const lineupFull = $derived(starters !== undefined && lineup.length >= starters);
@@ -82,20 +79,22 @@
 			.filter((player) => player.fullName);
 	}
 
-	async function loadCsv() {
+	async function loadCsv(event: Event & { currentTarget: HTMLInputElement }) {
+		const input = event.currentTarget;
+		const file = input.files?.[0];
+		// Reset so choosing the same file again still fires `change`.
+		input.value = "";
+		if (!file) return;
+
 		loadError = null;
+		loading = true;
 
 		try {
-			const path = await open({ filters: [{ name: "CSV", extensions: ["csv"] }], multiple: false });
-			if (!path) return;
-
-			loading = true;
-			const text = await readTextFile(path);
-			roster = csvRowsToPlayers(parseCsv(text));
+			roster = csvRowsToPlayers(parseCsv(await file.text()));
 			lineup = [];
-			loadedFileName = path.split(/[\\/]/).pop() ?? path;
+			loadedFileName = file.name;
 		} catch (error) {
-			loadError = String(error);
+			loadError = errorMessage(error);
 		} finally {
 			loading = false;
 		}
@@ -161,25 +160,9 @@
 		return toCsv(ROSTER_CSV_HEADER, rows);
 	}
 
-	async function saveLineupCsv() {
+	function downloadLineupCsv() {
 		if (lineup.length === 0) return;
-
-		saveError = null;
-
-		try {
-			const path = await save({
-				defaultPath: "starting-lineup.csv",
-				filters: [{ name: "CSV", extensions: ["csv"] }],
-			});
-			if (!path) return;
-
-			savingCsv = true;
-			await writeTextFile(path, lineupToCsv());
-		} catch (error) {
-			saveError = String(error);
-		} finally {
-			savingCsv = false;
-		}
+		downloadCsv("starting-lineup.csv", lineupToCsv());
 	}
 </script>
 
@@ -192,8 +175,9 @@
 		<Card.Content class="flex flex-col gap-4 sm:flex-row sm:items-end">
 			<div class="space-y-1.5">
 				<Label>Roster CSV</Label>
+				<input bind:this={fileInput} type="file" accept=".csv,text/csv" class="hidden" onchange={loadCsv} />
 				<div class="flex items-center gap-2">
-					<Button variant="secondary" onclick={loadCsv} disabled={loading}>
+					<Button variant="secondary" onclick={() => fileInput?.click()} disabled={loading}>
 						{#if loading}
 							<Spinner size="sm" />
 						{:else}
@@ -281,21 +265,11 @@
 						{lineup.length}{starters !== undefined ? ` / ${starters}` : ""} starters selected
 					</Card.Description>
 					<Card.Action>
-						<Button variant="outline" onclick={saveLineupCsv} disabled={lineup.length === 0 || savingCsv}>
-							{#if savingCsv}
-								<Spinner size="sm" />
-							{:else}
-								<Save />
-							{/if}
-							Save as CSV
+						<Button variant="outline" onclick={downloadLineupCsv} disabled={lineup.length === 0}>
+							<Download />
+							Download CSV
 						</Button>
 					</Card.Action>
-					{#if saveError}
-						<p class="flex items-center gap-1.5 text-xs text-destructive">
-							<CircleAlert class="size-3.5" />
-							{saveError}
-						</p>
-					{/if}
 				</Card.Header>
 				<Card.Content class="overflow-x-auto">
 					{#if lineup.length === 0}

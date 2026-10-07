@@ -6,7 +6,12 @@ declare global {
 		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+		interface Platform {
+			env: {
+				/** Browser Run binding, declared under `browser` in wrangler.jsonc. */
+				BROWSER: import('@cloudflare/puppeteer').BrowserWorker;
+			};
+		}
 	}
 }
 

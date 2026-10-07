@@ -1,8 +1,8 @@
 # Learfield Roster App
 
-A desktop app for pulling team rosters and building lineups, exportable to CSV.
+A web app for pulling team rosters from Sidearm Sports athletics sites and building lineups, exportable to CSV.
 
-Built with SvelteKit and Tauri, with a Rust backend that scrapes roster data.
+Built with SvelteKit and deployed as a Cloudflare Worker. The Worker scrapes rosters through [Browser Run](https://developers.cloudflare.com/browser-run/) (formerly Browser Rendering): athletics sites sit behind bot protection that rejects plain requests from Workers, so every request to a school site happens inside a real headless Chrome session. See [docs/roster-scraper-api.md](docs/roster-scraper-api.md) for the API.
 
 ## Developing
 
@@ -12,30 +12,40 @@ Install dependencies:
 bun install
 ```
 
-Run the web frontend alone:
+Start the dev server:
 
 ```sh
 bun run dev
 ```
 
-Run the full desktop app (frontend + Rust backend):
+The Worker's bindings from `wrangler.jsonc` are emulated locally, including Browser Run, which drives a local Chrome (downloaded on first use).
+
+Run the tests and type checks:
 
 ```sh
-bun run tauri dev
+bun run test
+bun run check
 ```
 
-## Building
+## Building and deploying
 
-Production web build:
+Production build, served locally with the same emulated bindings:
 
 ```sh
 bun run build
+bun run preview
 ```
 
-Desktop app bundle for your current platform:
+Deploy to your Cloudflare account:
 
 ```sh
-bun run tauri build
+bunx wrangler login
+bun run deploy
 ```
 
-Signed macOS and Windows builds run from GitHub Actions: trigger the "Build Desktop Application" workflow manually from the Actions tab.
+To run the built Worker in the actual Workers runtime locally, use `wrangler dev` with Node 22+ installed: under Bun alone, its dev proxy accepts connections but never responds.
+
+## Before sharing the deployed URL
+
+- **Access:** the deployed app is public, and every scrape spends Browser Run time on your account. To limit who can use it, put it behind [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/self-hosted-public-app/).
+- **Plan limits:** the Workers Free plan includes 10 minutes of Browser Run time per day and allows one new browser every 20 seconds, which covers occasional use. The Workers Paid plan includes 10 browser hours per month. The app reuses a warm browser session between requests to stay under these limits.

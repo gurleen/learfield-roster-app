@@ -1,0 +1,20 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "learfield-roster-app",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-10-06",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	// Browser Run (formerly Browser Rendering). Athletics sites sit behind bot
+	// protection that rejects plain fetches from Workers, so every school-site
+	// request goes through a real headless Chrome session.
+	"browser": {
+		"binding": "BROWSER"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

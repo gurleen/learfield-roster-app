@@ -23,6 +23,17 @@ export function toCsv(header: string[], rows: (string | null)[][]): string {
 	return lines.join("\n");
 }
 
+/** Saves CSV text through the browser's download flow. */
+export function downloadCsv(filename: string, csv: string) {
+	const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = filename;
+	link.click();
+	// Revoking synchronously can cancel the download in some browsers.
+	setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** Parses RFC 4180-style CSV text (quoted fields, escaped quotes, embedded newlines) into rows of raw string cells. */
 export function parseCsv(text: string): string[][] {
 	const rows: string[][] = [];

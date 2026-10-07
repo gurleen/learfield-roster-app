@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { invoke } from "@tauri-apps/api/core";
-	import { save } from "@tauri-apps/plugin-dialog";
-	import { writeTextFile } from "@tauri-apps/plugin-fs";
-	import { CircleAlert, Save, Users } from "@lucide/svelte";
+	import { CircleAlert, Download, Users } from "@lucide/svelte";
 	import * as Card from "$lib/components/ui/card/index.js";
 	import * as Select from "$lib/components/ui/select/index.js";
 	import * as Table from "$lib/components/ui/table/index.js";
@@ -11,8 +8,10 @@
 	import { Label } from "$lib/components/ui/label/index.js";
 	import { Spinner } from "$lib/components/ui/spinner/index.js";
 	import { NonIdealState } from "$lib/components/ui/non-ideal-state/index.js";
-	import { ROSTER_CSV_HEADER, toCsv } from "$lib/csv";
+	import { fetchRoster, listSports } from "$lib/api";
+	import { downloadCsv, ROSTER_CSV_HEADER, toCsv } from "$lib/csv";
 	import type { RosterResult, SportInfo } from "$lib/types/roster";
+	import { errorMessage } from "$lib/utils.js";
 
 	let website = $state("");
 	let sports = $state<SportInfo[]>([]);
@@ -23,8 +22,6 @@
 	let sportsError = $state<string | null>(null);
 	let rosterLoading = $state(false);
 	let rosterError = $state<string | null>(null);
-	let savingCsv = $state(false);
-	let saveError = $state<string | null>(null);
 
 	const selectedSportTitle = $derived(
 		sports.find((sport) => sport.slug === selectedSportSlug)?.title ?? "Select a sport",
@@ -42,9 +39,9 @@
 		rosterError = null;
 
 		try {
-			sports = await invoke<SportInfo[]>("list_sports", { website: host });
+			sports = await listSports(host);
 		} catch (error) {
-			sportsError = String(error);
+			sportsError = errorMessage(error);
 		} finally {
 			sportsLoading = false;
 		}
@@ -61,9 +58,9 @@
 		const url = `https://${host}/sports/${selectedSportSlug}/roster`;
 
 		try {
-			roster = await invoke<RosterResult>("fetch_roster", { url });
+			roster = await fetchRoster(url);
 		} catch (error) {
-			rosterError = String(error);
+			rosterError = errorMessage(error);
 		} finally {
 			rosterLoading = false;
 		}
@@ -84,26 +81,9 @@
 		return toCsv(ROSTER_CSV_HEADER, rows);
 	}
 
-	async function saveRosterCsv() {
+	function downloadRosterCsv() {
 		if (!roster) return;
-
-		saveError = null;
-		const suggestedName = `${roster.schoolHost}-${roster.sportSlug}-roster.csv`;
-
-		try {
-			const path = await save({
-				defaultPath: suggestedName,
-				filters: [{ name: "CSV", extensions: ["csv"] }],
-			});
-			if (!path) return;
-
-			savingCsv = true;
-			await writeTextFile(path, rosterToCsv(roster));
-		} catch (error) {
-			saveError = String(error);
-		} finally {
-			savingCsv = false;
-		}
+		downloadCsv(`${roster.schoolHost}-${roster.sportSlug}-roster.csv`, rosterToCsv(roster));
 	}
 </script>
 
@@ -176,25 +156,11 @@
 						.length} players
 				</Card.Description>
 				<Card.Action>
-					<Button
-						variant="outline"
-						onclick={saveRosterCsv}
-						disabled={roster.players.length === 0 || savingCsv}
-					>
-						{#if savingCsv}
-							<Spinner size="sm" />
-						{:else}
-							<Save />
-						{/if}
-						Save as CSV
+					<Button variant="outline" onclick={downloadRosterCsv} disabled={roster.players.length === 0}>
+						<Download />
+						Download CSV
 					</Button>
 				</Card.Action>
-				{#if saveError}
-					<p class="flex items-center gap-1.5 text-xs text-destructive">
-						<CircleAlert class="size-3.5" />
-						{saveError}
-					</p>
-				{/if}
 			</Card.Header>
 			<Card.Content>
 				{#if roster.players.length === 0}

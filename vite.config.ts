@@ -1,23 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-const tauriHost = process.env.TAURI_DEV_HOST;
-
 export default defineConfig({
 	server: {
-		allowedHosts: ['5173-mbp.gurleen.net'],
-		host: tauriHost || false,
-		port: 5173,
-		strictPort: true,
-		hmr: tauriHost
-			? {
-					protocol: 'ws',
-					host: tauriHost,
-					port: 5183
-				}
-			: undefined
+		allowedHosts: ['5173-mbp.gurleen.net']
 	},
 	plugins: [
 		tailwindcss(),
@@ -28,12 +16,10 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-			adapter: adapter({
-				fallback: 'index.html'
-			}),
+			// Builds a Cloudflare Worker (configured in wrangler.jsonc) that serves the app's
+			// assets and runs the /api routes. In dev, its bindings (including Browser Run,
+			// backed by a local Chrome) are emulated from wrangler.jsonc.
+			adapter: adapter(),
 
 			typescript: {
 				config: (config) => {
